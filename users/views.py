@@ -10,7 +10,7 @@ from django.contrib.auth.decorators import user_passes_test
 User = get_user_model()
 
 class RegisterView(APIView):
-
+    
     def post(self, request):
         serializer = RegisterSerializer(data=request.data)
         if serializer.is_valid():
@@ -29,6 +29,5 @@ class LoginView(APIView):
 
 class ProfileView(APIView):
     permission_classes = [IsAuthenticated]
-
     def get(self, request):
         return Response(UserSerializer(request.user).data)
