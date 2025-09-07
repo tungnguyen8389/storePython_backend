@@ -4,8 +4,7 @@ from django.contrib.auth.models import AbstractUser
 # Danh sách role cho user
 ROLE_CHOICES = (
     ('admin', 'Admin'),
-    ('user', 'User'),
-    ('guest', 'Guest'),
+    ('customer', 'Customer'),
 )
 
 class User(AbstractUser):
@@ -13,7 +12,7 @@ class User(AbstractUser):
     role = models.CharField(
         max_length=10,
         choices=ROLE_CHOICES,
-        default='user'
+        default='customer'
     )
 
     # Nếu muốn có thêm số điện thoại hoặc thông tin khác thì thêm ở đây
