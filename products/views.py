@@ -1,59 +1,58 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from rest_framework.permissions import IsAuthenticated, AllowAny
-from users.permissions import IsAdmin
-from .models import Product
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
+from .services import ProductService
 from .serializers import ProductSerializer
-from .services import get_all_products, create_product, update_product, delete_product
+from .models import Product
+from rest_framework.permissions import AllowAny
+from users.permissions import IsAdmin
 
 class ProductListView(APIView):
-    permission_classes = [AllowAny]   # ai cũng xem được
+    # Chỉ yêu cầu xác thực và admin cho POST
+    permission_classes = [IsAuthenticated, IsAdmin]
+
+    def get_permissions(self):
+        # Cho phép GET không yêu cầu xác thực
+        if self.request.method == 'GET':
+            return [AllowAny()]
+        return super().get_permissions()
+
 
     def get(self, request):
-        products = get_all_products()
+        # GET không yêu cầu phân quyền, cho phép tất cả người dùng
+        products = Product.objects.all().select_related('category')
         serializer = ProductSerializer(products, many=True)
         return Response(serializer.data)
 
-class ProductCreateView(APIView):
-    permission_classes = [IsAuthenticated, IsAdmin]
-
     def post(self, request):
+        # Chỉ admin có thể tạo sản phẩm
         serializer = ProductSerializer(data=request.data)
         if serializer.is_valid():
-            product = create_product(serializer.validated_data)
+            product = ProductService.create_product(serializer.validated_data)
             return Response(ProductSerializer(product).data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class ProductDetailView(APIView):
-    permission_classes = [AllowAny]
+    # Chỉ yêu cầu xác thực và admin cho PUT và DELETE
+    permission_classes = [IsAuthenticated, IsAdmin]
 
-    def get(self, request, pk):
-        try:
-            product = Product.objects.get(pk=pk)
-        except Product.DoesNotExist:
-            return Response({"error": "Not found"}, status=status.HTTP_404_NOT_FOUND)
+    def get(self, request, product_id):
+        # GET không yêu cầu phân quyền
+        product = ProductService.get_product_by_id(product_id)
         serializer = ProductSerializer(product)
         return Response(serializer.data)
 
-class ProductUpdateDeleteView(APIView):
-    permission_classes = [IsAuthenticated, IsAdmin]
-
-    def put(self, request, pk):
-        try:
-            product = Product.objects.get(pk=pk)
-        except Product.DoesNotExist:
-            return Response({"error": "Not found"}, status=status.HTTP_404_NOT_FOUND)
+    def put(self, request, product_id):
+        # Chỉ admin có thể cập nhật sản phẩm
         serializer = ProductSerializer(data=request.data, partial=True)
         if serializer.is_valid():
-            updated_product = update_product(product, serializer.validated_data)
-            return Response(ProductSerializer(updated_product).data)
+            product = ProductService.update_product(product_id, serializer.validated_data)
+            return Response(ProductSerializer(product).data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    def delete(self, request, pk):
-        try:
-            product = Product.objects.get(pk=pk)
-        except Product.DoesNotExist:
-            return Response({"error": "Not found"}, status=status.HTTP_404_NOT_FOUND)
-        delete_product(product)
+    def delete(self, request, product_id):
+        # Chỉ admin có thể xóa sản phẩm
+        product = ProductService.get_product_by_id(product_id)
+        product.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
