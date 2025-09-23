@@ -22,12 +22,12 @@ class ProductListView(APIView):
     def get(self, request):
         # GET không yêu cầu phân quyền, cho phép tất cả người dùng
         products = Product.objects.all().select_related('category')
-        serializer = ProductSerializer(products, many=True)
+        serializer = ProductSerializer(products, many=True, context={"request": request})
         return Response(serializer.data)
 
     def post(self, request):
         # Chỉ admin có thể tạo sản phẩm
-        serializer = ProductSerializer(data=request.data)
+        serializer = ProductSerializer(data=request.data, context={"request": request})
         if serializer.is_valid():
             product = ProductService.create_product(serializer.validated_data)
             return Response(ProductSerializer(product).data, status=status.HTTP_201_CREATED)
@@ -40,12 +40,12 @@ class ProductDetailView(APIView):
     def get(self, request, product_id):
         # GET không yêu cầu phân quyền
         product = ProductService.get_product_by_id(product_id)
-        serializer = ProductSerializer(product)
+        serializer = ProductSerializer(product, context={"request": request})
         return Response(serializer.data)
 
     def put(self, request, product_id):
         # Chỉ admin có thể cập nhật sản phẩm
-        serializer = ProductSerializer(data=request.data, partial=True)
+        serializer = ProductSerializer(data=request.data, partial=True, context={"request": request})
         if serializer.is_valid():
             product = ProductService.update_product(product_id, serializer.validated_data)
             return Response(ProductSerializer(product).data)

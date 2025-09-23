@@ -9,6 +9,7 @@ class Product(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name="products")
+    image = models.ImageField(upload_to="products/", blank=True, null=True) 
 
     def __str__(self):
         return self.name

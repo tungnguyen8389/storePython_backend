@@ -15,13 +15,12 @@ class ProductService:
         category_id = data.get("category")
         if not category_id:
             raise ValidationError("Category is required")
-
         try:
             category = Category.objects.get(id=category_id.id if hasattr(category_id, 'id') else category_id)
         except Category.DoesNotExist:
             raise ValidationError("Invalid category")
 
-        product = Product.objects.create(**data)
+        product = Product.objects.create(**data)  # data đã bao gồm image nếu có
         return product
 
     @staticmethod
