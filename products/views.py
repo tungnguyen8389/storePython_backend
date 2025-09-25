@@ -37,6 +37,12 @@ class ProductDetailView(APIView):
     # Chỉ yêu cầu xác thực và admin cho PUT và DELETE
     permission_classes = [IsAuthenticated, IsAdmin]
 
+    def get_permissions(self):
+        # Cho phép GET không yêu cầu xác thực
+        if self.request.method == 'GET':
+            return [AllowAny()]
+        return super().get_permissions()
+
     def get(self, request, product_id):
         # GET không yêu cầu phân quyền
         product = ProductService.get_product_by_id(product_id)

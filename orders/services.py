@@ -1,24 +1,34 @@
-from .models import Order
-from django.shortcuts import get_object_or_404
+from django.db import transaction
+from carts.models import Cart
+from .models import Order, OrderItem
+from products.models import Product
 
-def get_all_orders(user=None):
-    if user and not user.is_staff:
-        return Order.objects.filter(user=user)
-    return Order.objects.all()
 
-def get_order_by_id(pk):
-    return get_object_or_404(Order, pk=pk)
+def checkout_cart(user, payment_method="cod"):
+    cart = Cart.objects.filter(user=user, status="active").first()
+    if not cart or cart.items.count() == 0:
+        raise ValueError("Cart is empty")
 
-def create_order(user, data):
-    if "user" in data:
-        data.pop("user")
-    return Order.objects.create(user=user, **data)
+    with transaction.atomic():
+        total = sum(item.product.price * item.quantity for item in cart.items.all())
 
-def update_order(order, data):
-    for field, value in data.items():
-        setattr(order, field, value)
-    order.save()
+        order = Order.objects.create(
+            user=user,
+            total_price=total,
+            payment_method=payment_method,
+            status="pending"
+        )
+
+        for item in cart.items.all():
+            OrderItem.objects.create(
+                order=order,
+                product=item.product,
+                quantity=item.quantity,
+                price=item.product.price
+            )
+
+        cart.status = "checked_out"
+        cart.save()
+        cart.items.all().delete()
+
     return order
-
-def delete_order(order):
-    order.delete()

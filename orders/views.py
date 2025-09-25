@@ -3,41 +3,65 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 from .serializers import OrderSerializer
-from .services import get_all_orders, get_order_by_id, create_order, update_order, delete_order
+from .services import checkout_cart
 from .models import Order
+from users.permissions import IsAdmin  # custom permission cho admin
 
-class OrderListCreateView(APIView):
+
+class CheckoutView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        payment_method = request.data.get("payment_method", "cod")
+        try:
+            order = checkout_cart(request.user, payment_method)
+            return Response(OrderSerializer(order).data, status=status.HTTP_201_CREATED)
+        except ValueError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class OrderListView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        orders = get_all_orders(request.user)
+        # Admin thấy tất cả đơn hàng, user chỉ thấy của mình
+        if request.user.is_staff:
+            orders = Order.objects.all().prefetch_related("items")
+        else:
+            orders = Order.objects.filter(user=request.user).prefetch_related("items")
         serializer = OrderSerializer(orders, many=True)
         return Response(serializer.data)
 
-    def post(self, request):
-        serializer = OrderSerializer(data=request.data)
-        if serializer.is_valid():
-            order = create_order(request.user, serializer.validated_data)
-            return Response(OrderSerializer(order).data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
 
 class OrderDetailView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdmin]
 
-    def get(self, request, pk):
-        order = get_order_by_id(pk)
+    def get(self, request, order_id):
+        try:
+            order = Order.objects.prefetch_related("items").get(id=order_id)
+            serializer = OrderSerializer(order)
+            return Response(serializer.data)
+        except Order.DoesNotExist:
+            return Response({"error": "Order not found"}, status=status.HTTP_404_NOT_FOUND)
+
+    def put(self, request, order_id):
+        try:
+            order = Order.objects.get(id=order_id)
+        except Order.DoesNotExist:
+            return Response({"error": "Order not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        new_status = request.data.get("status")
+        if new_status not in dict(Order.STATUS_CHOICES):
+            return Response({"error": "Invalid status"}, status=status.HTTP_400_BAD_REQUEST)
+
+        order.status = new_status
+        order.save()
         return Response(OrderSerializer(order).data)
 
-    def put(self, request, pk):
-        order = get_order_by_id(pk)
-        serializer = OrderSerializer(order, data=request.data, partial=True)
-        if serializer.is_valid():
-            updated_order = update_order(order, serializer.validated_data)
-            return Response(OrderSerializer(updated_order).data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    def delete(self, request, pk):
-        order = get_order_by_id(pk)
-        delete_order(order)
-        return Response(status=status.HTTP_204_NO_CONTENT)
+    def delete(self, request, order_id):
+        try:
+            order = Order.objects.get(id=order_id)
+            order.delete()
+            return Response({"message": "Order deleted"}, status=status.HTTP_204_NO_CONTENT)
+        except Order.DoesNotExist:
+            return Response({"error": "Order not found"}, status=status.HTTP_404_NOT_FOUND)
