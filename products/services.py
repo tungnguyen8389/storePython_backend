@@ -1,16 +1,39 @@
-from .models import Product
+from django.core.exceptions import ValidationError
+from rest_framework.exceptions import NotFound
+from .models import Product, Category
 
-def get_all_products():
-    return Product.objects.all()
+class ProductService:
+    @staticmethod
+    def get_product_by_id(product_id):
+        try:
+            return Product.objects.get(id=product_id)
+        except Product.DoesNotExist:
+            raise NotFound("Product not found")
 
-def create_product(validated_data):
-    return Product.objects.create(**validated_data)
+    @staticmethod
+    def create_product(data):
+        category_id = data.get("category")
+        if not category_id:
+            raise ValidationError("Category is required")
+        try:
+            category = Category.objects.get(id=category_id.id if hasattr(category_id, 'id') else category_id)
+        except Category.DoesNotExist:
+            raise ValidationError("Invalid category")
 
-def update_product(product, validated_data):
-    for attr, value in validated_data.items():
-        setattr(product, attr, value)
-    product.save()
-    return product
+        product = Product.objects.create(**data)  # data đã bao gồm image nếu có
+        return product
 
-def delete_product(product):
-    product.delete()
+    @staticmethod
+    def update_product(product_id, data):
+        product = ProductService.get_product_by_id(product_id)
+        for key, value in data.items():
+            setattr(product, key, value)
+        product.save()
+        return product
+
+    @staticmethod
+    def check_stock(product_id, quantity):
+        product = ProductService.get_product_by_id(product_id)
+        if product.stock_quantity < quantity:
+            raise ValidationError(f"Only {product.stock_quantity} items in stock")
+        return product

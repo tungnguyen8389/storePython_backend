@@ -47,6 +47,10 @@ INSTALLED_APPS = [
     "shop",
     "users",
     "products",
+    "categories",
+    "carts",
+    "orders",
+    "review",
 
 ]
 
@@ -99,12 +103,24 @@ WSGI_APPLICATION = "shop.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
+# DATABASES = {
+#     "default": {
+#         "ENGINE": "django.db.backends.sqlite3",
+#         "NAME": BASE_DIR / "db.sqlite3",
+#     }
+# }
+
 DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+    'default': {
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'python_store',  
+        'USER': 'root',     
+        'PASSWORD': '', 
+        'HOST': 'localhost',             
+        'PORT': '3306',                 
     }
 }
+
 
 AUTH_USER_MODEL = 'users.User'
 
@@ -149,6 +165,10 @@ STATIC_URL = "static/"
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / "media"
+
 
 
 SIMPLE_JWT = {
