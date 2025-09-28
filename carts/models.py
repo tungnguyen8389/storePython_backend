@@ -16,6 +16,8 @@ class Cart(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="active")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    class Meta:
+        unique_together = ('user', 'status') 
 
     def __str__(self):
         return f"Cart {self.id} - {self.user} ({self.status})"

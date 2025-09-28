@@ -1,10 +1,39 @@
 from django.shortcuts import get_object_or_404
 from .models import Cart, CartItem
 from products.models import Product
+from carts.models import Cart, CartItem
+from django.db import transaction
 
+# def get_or_create_cart(user):
+#     cart, created  = Cart.objects.get_or_create(user=user)
+#     if created:
+#         cart.status = "active"
+#         cart.save()
+#     return cart
+
+# def get_or_create_cart(user):
+#     cart, created = Cart.objects.get_or_create(user=user, defaults={'status': 'active'})
+#     return cart
+
+@transaction.atomic 
 def get_or_create_cart(user):
-    cart, _ = Cart.objects.get_or_create(user=user)
-    return cart
+    # 1. Cố gắng tìm giỏ hàng active (dạng đang hoạt động)
+    active_cart = Cart.objects.filter(user=user, status="active").first()
+    
+    if active_cart:
+        return active_cart
+    
+    existing_cart = Cart.objects.filter(user=user).order_by('-updated_at').first()
+    if existing_cart and existing_cart.status != "active":
+        if existing_cart.status == "checked_out":
+             existing_cart.items.all().delete() 
+        existing_cart.status = "active"
+        existing_cart.save()
+        
+        return existing_cart
+
+    new_cart = Cart.objects.create(user=user, status="active")
+    return new_cart
 
 def list_cart_items(user):
     cart = get_or_create_cart(user)
